@@ -1,23 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EldenRingSaveCopy
 {
     static class ArrayExtensions
     {
-
-        public static IEnumerable<int> StartingIndex(this byte[] x, byte[] y)
+        public static IEnumerable<int> FindSubArrayIndices(this byte[] buffer, byte[] pattern)
         {
-            IEnumerable<int> index = Enumerable.Range(0, x.Length - y.Length + 1);
-            for (int i = 0; i < y.Length; i++)
+            if (buffer == null)
             {
-                index = index.Where(n => x[n + i] == y[i]).ToArray();
+                throw new ArgumentNullException(nameof(buffer));
             }
-            return index;
-        }
 
+            if (pattern == null)
+            {
+                throw new ArgumentNullException(nameof(pattern));
+            }
+
+            if (pattern.Length == 0 || pattern.Length > buffer.Length)
+            {
+                yield break;
+            }
+
+            for (int i = 0; i <= buffer.Length - pattern.Length; i++)
+            {
+                bool match = true;
+                for (int j = 0; j < pattern.Length; j++)
+                {
+                    if (buffer[i + j] != pattern[j])
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match)
+                {
+                    yield return i;
+                }
+            }
+        }
     }
 }

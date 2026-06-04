@@ -1,47 +1,26 @@
-﻿using EldenRingSaveCopy.Saves;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
 namespace EldenRingSaveCopy
 {
     public class FileManager
     {
         private const int ID_LOCATION = 0x19003B4;
+        private const int ID_LENGTH = 8;
 
-        private byte[] sourceFile;
-        private byte[] targetFile;
-        private byte[] sourceID;
-        private byte[] targetID;
-        private string sourcePath;
-        private string targetPath;
+        private byte[] sourceFile = Array.Empty<byte>();
+        private byte[] targetFile = Array.Empty<byte>();
+        private readonly byte[] sourceID = new byte[ID_LENGTH];
+        private readonly byte[] targetID = new byte[ID_LENGTH];
+        private string sourcePath = string.Empty;
+        private string targetPath = string.Empty;
 
-        public FileManager()
+        public byte[] SourceFile
         {
-            sourceFile = new byte[0];
-            targetFile = new byte[0];
-            sourceID = new byte[8];
-            targetID = new byte[8];
-        }
-
-        public byte[] SourceFile {
             get => sourceFile;
             set
             {
-                sourceFile = value ?? new byte[0];
-                if(sourceFile.Length > 0)
-                {
-                    try
-                    {
-                        Array.Copy(sourceFile, ID_LOCATION, sourceID, 0, 8);
-                    }
-                    catch (Exception)
-                    {
-
-                    }
-                }
+                sourceFile = value ?? Array.Empty<byte>();
+                ExtractId(sourceFile, sourceID);
             }
         }
 
@@ -50,47 +29,38 @@ namespace EldenRingSaveCopy
             get => targetFile;
             set
             {
-                targetFile = value ?? new byte[0];
-                if (targetFile.Length > 0)
-                {
-                    try
-                    {
-                        Array.Copy(targetFile, ID_LOCATION, targetID, 0, 8);
-                    }
-                    catch (Exception)
-                    {
-
-                    }
-                }
+                targetFile = value ?? Array.Empty<byte>();
+                ExtractId(targetFile, targetID);
             }
         }
 
         public string TargetPath
         {
             get => targetPath;
-            set
-            {
-                targetPath = value ?? string.Empty;
-            }
+            set => targetPath = value ?? string.Empty;
         }
 
         public string SourcePath
         {
             get => sourcePath;
-            set
+            set => sourcePath = value ?? string.Empty;
+        }
+
+        public byte[] TargetID => targetID;
+        public byte[] SourceID => sourceID;
+        public bool HasValidSource => sourceFile.Length >= ID_LOCATION + ID_LENGTH;
+        public bool HasValidTarget => targetFile.Length >= ID_LOCATION + ID_LENGTH;
+
+        private static void ExtractId(byte[] file, byte[] destination)
+        {
+            if (file != null && file.Length >= ID_LOCATION + ID_LENGTH)
             {
-                sourcePath = value ?? string.Empty;
+                Array.Copy(file, ID_LOCATION, destination, 0, ID_LENGTH);
             }
-        }
-
-        public byte[] TargetID
-        {
-            get => targetID;
-        }
-
-        public byte[] SourceID
-        {
-            get => sourceID;
+            else
+            {
+                Array.Clear(destination, 0, destination.Length);
+            }
         }
     }
 }

@@ -99,6 +99,7 @@ namespace EldenRingSaveCopy
             this.targetFilePath.Location = new System.Drawing.Point(337, 435);
             this.targetFilePath.Margin = new System.Windows.Forms.Padding(4);
             this.targetFilePath.Name = "targetFilePath";
+            this.targetFilePath.ReadOnly = true;
             this.targetFilePath.Size = new System.Drawing.Size(242, 22);
             this.targetFilePath.TabIndex = 4;
             // 
@@ -126,18 +127,8 @@ namespace EldenRingSaveCopy
             // 
             // fromSaveSlot
             // 
+            this.fromSaveSlot.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.fromSaveSlot.FormattingEnabled = true;
-            this.fromSaveSlot.Items.AddRange(new object[] {
-            "Slot 1",
-            "Slot 2",
-            "Slot 3",
-            "Slot 4",
-            "Slot 5",
-            "Slot 6",
-            "Slot 7",
-            "Slot 8",
-            "Slot 9",
-            "Slot 10"});
             this.fromSaveSlot.Location = new System.Drawing.Point(19, 491);
             this.fromSaveSlot.Margin = new System.Windows.Forms.Padding(4);
             this.fromSaveSlot.MaxDropDownItems = 11;
@@ -209,18 +200,8 @@ namespace EldenRingSaveCopy
             // 
             // toSaveSlot
             // 
+            this.toSaveSlot.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.toSaveSlot.FormattingEnabled = true;
-            this.toSaveSlot.Items.AddRange(new object[] {
-            "Slot 1",
-            "Slot 2",
-            "Slot 3",
-            "Slot 4",
-            "Slot 5",
-            "Slot 6",
-            "Slot 7",
-            "Slot 8",
-            "Slot 9",
-            "Slot 10"});
             this.toSaveSlot.Location = new System.Drawing.Point(337, 491);
             this.toSaveSlot.Margin = new System.Windows.Forms.Padding(4);
             this.toSaveSlot.MaxDropDownItems = 11;
