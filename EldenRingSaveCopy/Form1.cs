@@ -260,7 +260,7 @@ namespace EldenRingSaveCopy
             CheckButtonState();
         }
 
-        private void CreateFileBackup(string path, byte[] file)
+        private string CreateFileBackup(string path, byte[] file)
         {
             string directory = System.IO.Path.GetDirectoryName(path) ?? string.Empty;
             string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
@@ -274,6 +274,7 @@ namespace EldenRingSaveCopy
             }
 
             System.IO.File.WriteAllBytes(backupPath, file);
+            return backupPath;
         }
 
         private void copyButton_Click(object sender, EventArgs e)
@@ -285,7 +286,7 @@ namespace EldenRingSaveCopy
                     throw new InvalidOperationException("The selected source or destination slot is not available.");
                 }
 
-                CreateFileBackup(_fileManager.TargetPath, _fileManager.TargetFile);
+                string backupPath = CreateFileBackup(_fileManager.TargetPath, _fileManager.TargetFile);
 
                 byte[] updatedTargetFile = SaveFileService.CreateUpdatedSaveFile(
                     selectedSourceSave,
@@ -317,7 +318,7 @@ namespace EldenRingSaveCopy
                 copyButton.Enabled = false;
                 copyButton.Text = "Copy Successful!";
                 copyButton.BackColor = Color.Gold;
-                showAdditionalInfoMessage(MESSAGE_SUCCESS, "Copy completed successfully. Remove any ER0000.bak file before launching the game.");
+                showAdditionalInfoMessage(MESSAGE_SUCCESS, $"Copy completed successfully. Backup saved as {System.IO.Path.GetFileName(backupPath)}. Remove any ER0000.bak file before launching the game.");
             }
             catch (Exception ex)
             {
@@ -367,10 +368,22 @@ namespace EldenRingSaveCopy
         {
             try
             {
-                string bakPath = path + ".bak";
+                string directory = System.IO.Path.GetDirectoryName(path) ?? string.Empty;
+                string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+
+                string bakPath = System.IO.Path.Combine(directory, $"{fileName}.bak");
                 if (File.Exists(bakPath))
                 {
                     File.Delete(bakPath);
+                }
+
+                for (int backupIndex = 1; backupIndex <= 10; backupIndex++)
+                {
+                    string legacyBackupPath = System.IO.Path.Combine(directory, $"{fileName}.backup{backupIndex}");
+                    if (File.Exists(legacyBackupPath))
+                    {
+                        File.Delete(legacyBackupPath);
+                    }
                 }
             }
             catch

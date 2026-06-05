@@ -234,7 +234,7 @@ namespace EldenRingSaveCopy
             this.additionalInfoLabel.Name = "additionalInfoLabel";
             this.additionalInfoLabel.Size = new System.Drawing.Size(563, 49);
             this.additionalInfoLabel.TabIndex = 13;
-            this.additionalInfoLabel.Text = "Ensure the ER0000.bak file has been deleted from save folder prior to loading.";
+            this.additionalInfoLabel.Text = "Ensure any ER0000.bak or ER0000.backup* file has been deleted from save folder prior to loading.";
             this.additionalInfoLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // Form1
