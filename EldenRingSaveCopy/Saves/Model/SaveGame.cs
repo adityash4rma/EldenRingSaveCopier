@@ -3,7 +3,7 @@ using System.Text;
 
 namespace EldenRingSaveCopy.Saves.Model
 {
-    public class SaveGame : ISaveGame
+    public class SaveGame
     {
         public const int SLOT_START_INDEX = 0x310;
         public const int SLOT_LENGTH = 0x280000;
@@ -44,20 +44,6 @@ namespace EldenRingSaveCopy.Saves.Model
         public static int HeaderStartIndex(int slotIndex)
         {
             return SAVE_HEADER_START_INDEX + (slotIndex * SAVE_HEADER_LENGTH);
-        }
-
-        public SaveGame CloneForSlot(int newIndex)
-        {
-            return new SaveGame
-            {
-                Active = Active,
-                CharacterName = CharacterName,
-                SaveData = (byte[])SaveData.Clone(),
-                HeaderData = (byte[])HeaderData.Clone(),
-                Index = newIndex,
-                CharacterLevel = CharacterLevel,
-                SecondsPlayed = SecondsPlayed
-            };
         }
 
         public bool LoadData(byte[] data, int slotIndex)

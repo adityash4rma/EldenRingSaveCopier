@@ -33,6 +33,31 @@ namespace EldenRingSaveCopy
                 throw new ArgumentNullException(nameof(targetId));
             }
 
+            if (sourceSave.Index < 0 || sourceSave.Index > 9)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sourceSave), "Source slot index must be between 0 and 9.");
+            }
+
+            if (targetSave.Index < 0 || targetSave.Index > 9)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetSave), "Target slot index must be between 0 and 9.");
+            }
+
+            if (sourceSave.SaveData.Length != SaveGame.SLOT_LENGTH || sourceSave.HeaderData.Length != SaveGame.SAVE_HEADER_LENGTH)
+            {
+                throw new ArgumentException("Source save slot data is incomplete.", nameof(sourceSave));
+            }
+
+            if (targetFile.Length < SaveGame.SAVE_HEADERS_SECTION_START_INDEX + SaveGame.SAVE_HEADERS_SECTION_LENGTH)
+            {
+                throw new ArgumentException("Target save file is incomplete.", nameof(targetFile));
+            }
+
+            if (sourceId.Length != targetId.Length || sourceId.Length == 0)
+            {
+                throw new ArgumentException("Source and target IDs must have the same non-zero length.");
+            }
+
             var updatedFile = (byte[])targetFile.Clone();
             var workingSaveData = (byte[])sourceSave.SaveData.Clone();
 

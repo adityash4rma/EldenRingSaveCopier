@@ -1,13 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.IO;
-using System.Security.Cryptography;
 using EldenRingSaveCopy.Saves.Model;
 
 namespace EldenRingSaveCopy
@@ -23,11 +20,11 @@ namespace EldenRingSaveCopy
         private const int MESSAGE_INFO = 1;
         private const int MESSAGE_SUCCESS = 2;
 
-        private BindingList<ISaveGame> sourceSaveGames = new BindingList<ISaveGame>();
-        private BindingList<ISaveGame> targetSaveGames = new BindingList<ISaveGame>();
+        private BindingList<SaveGame> sourceSaveGames = new BindingList<SaveGame>();
+        private BindingList<SaveGame> targetSaveGames = new BindingList<SaveGame>();
 
-        private ISaveGame selectedSourceSave = new NullSaveGame();
-        private ISaveGame selectedTargetSave = new NullSaveGame();
+        private SaveGame selectedSourceSave;
+        private SaveGame selectedTargetSave;
 
         [DllImportAttribute("user32.dll")]
         public static extern int SendMessage(IntPtr hWnd,
@@ -61,7 +58,6 @@ namespace EldenRingSaveCopy
 
         private void sourceFileBrowse(object sender, EventArgs e)
         {
-            sourceSaveGames.Clear();
             using (var openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.InitialDirectory = GetDefaultEldenRingSaveDirectory();
@@ -72,6 +68,9 @@ namespace EldenRingSaveCopy
                     return;
                 }
 
+                sourceSaveGames.Clear();
+                selectedSourceSave = null;
+                _fileManager.SourceFile = Array.Empty<byte>();
                 _fileManager.SourcePath = openFileDialog.FileName;
 
                 try
@@ -91,7 +90,7 @@ namespace EldenRingSaveCopy
                     if (sourceSaveGames.Count > 0)
                     {
                         fromSaveSlot.SelectedIndex = 0;
-                        selectedSourceSave = (ISaveGame)fromSaveSlot.SelectedItem;
+                        selectedSourceSave = (SaveGame)fromSaveSlot.SelectedItem;
                         showAdditionalInfoMessage(MESSAGE_INFO, "Source savegame file loaded correctly.");
                     }
                     else
@@ -102,6 +101,7 @@ namespace EldenRingSaveCopy
                 catch (Exception ex)
                 {
                     sourceFilePath.Text = "Failed to load";
+                    _fileManager.SourceFile = Array.Empty<byte>();
                     showAdditionalInfoMessage(MESSAGE_ERROR, $"Source savegame file failed to load: {ex.Message}");
                 }
             }
@@ -111,7 +111,6 @@ namespace EldenRingSaveCopy
 
         private void targetButtonBrowse(object sender, EventArgs e)
         {
-            targetSaveGames.Clear();
             using (var openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.InitialDirectory = GetDefaultEldenRingSaveDirectory();
@@ -122,6 +121,9 @@ namespace EldenRingSaveCopy
                     return;
                 }
 
+                targetSaveGames.Clear();
+                selectedTargetSave = null;
+                _fileManager.TargetFile = Array.Empty<byte>();
                 _fileManager.TargetPath = openFileDialog.FileName;
 
                 try
@@ -132,14 +134,12 @@ namespace EldenRingSaveCopy
                     for (int i = 0; i < 10; i++)
                     {
                         var newSave = new SaveGame();
-                        if (newSave.LoadData(_fileManager.TargetFile, i))
+                        if (!newSave.LoadData(_fileManager.TargetFile, i))
                         {
-                            if (!newSave.Active)
-                            {
-                                newSave.CharacterName = $"Slot {i + 1}";
-                            }
+                            continue;
                         }
-                        else
+
+                        if (!newSave.Active)
                         {
                             newSave.CharacterName = $"Slot {i + 1}";
                         }
@@ -150,13 +150,18 @@ namespace EldenRingSaveCopy
                     if (targetSaveGames.Count > 0)
                     {
                         toSaveSlot.SelectedIndex = 0;
-                        selectedTargetSave = (ISaveGame)toSaveSlot.SelectedItem;
+                        selectedTargetSave = (SaveGame)toSaveSlot.SelectedItem;
                         showAdditionalInfoMessage(MESSAGE_INFO, "Destination savegame file loaded correctly.");
+                    }
+                    else
+                    {
+                        showAdditionalInfoMessage(MESSAGE_ERROR, "No valid destination slots were found in the selected file.");
                     }
                 }
                 catch (Exception ex)
                 {
                     targetFilePath.Text = "Failed to load";
+                    _fileManager.TargetFile = Array.Empty<byte>();
                     showAdditionalInfoMessage(MESSAGE_ERROR, $"Destination savegame file failed to load: {ex.Message}");
                 }
             }
@@ -173,8 +178,8 @@ namespace EldenRingSaveCopy
                     System.IO.Path.GetFullPath(_fileManager.SourcePath).TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar),
                     System.IO.Path.GetFullPath(_fileManager.TargetPath).TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar),
                     StringComparison.InvariantCultureIgnoreCase)
-                && selectedSourceSave != null && selectedSourceSave.Id != Guid.Empty
-                && selectedTargetSave != null && selectedTargetSave.Id != Guid.Empty;
+                && IsValidSourceSelection(selectedSourceSave)
+                && IsValidTargetSelection(selectedTargetSave);
 
             if (validSelection)
             {
@@ -194,7 +199,7 @@ namespace EldenRingSaveCopy
             }
         }
 
-        private string GetDisplayName(ISaveGame save, string defaultPrefix)
+        private string GetDisplayName(SaveGame save, string defaultPrefix)
         {
             if (save == null)
             {
@@ -207,6 +212,27 @@ namespace EldenRingSaveCopy
             }
 
             return save.CharacterName.Split('\0')[0];
+        }
+
+        private bool IsValidSourceSelection(SaveGame save)
+        {
+            return save != null
+                && save.Id != Guid.Empty
+                && save.Index >= 0
+                && save.Index < 10
+                && save.Active
+                && save.SaveData.Length == SaveGame.SLOT_LENGTH
+                && save.HeaderData.Length == SaveGame.SAVE_HEADER_LENGTH;
+        }
+
+        private bool IsValidTargetSelection(SaveGame save)
+        {
+            return save != null
+                && save.Id != Guid.Empty
+                && save.Index >= 0
+                && save.Index < 10
+                && save.SaveData.Length == SaveGame.SLOT_LENGTH
+                && save.HeaderData.Length == SaveGame.SAVE_HEADER_LENGTH;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -223,14 +249,14 @@ namespace EldenRingSaveCopy
         private void fromSaveSlot_SelectedIndexChanged(object sender, EventArgs e)
         {
             var comboBox = (ComboBox)sender;
-            selectedSourceSave = comboBox.SelectedItem as ISaveGame;
+            selectedSourceSave = comboBox.SelectedItem as SaveGame;
             CheckButtonState();
         }
 
         private void toSaveSlot_SelectedIndexChanged(object sender, EventArgs e)
         {
             var comboBox = (ComboBox)sender;
-            selectedTargetSave = comboBox.SelectedItem as ISaveGame;
+            selectedTargetSave = comboBox.SelectedItem as SaveGame;
             CheckButtonState();
         }
 
@@ -254,7 +280,7 @@ namespace EldenRingSaveCopy
         {
             try
             {
-                if (!(selectedSourceSave is SaveGame sourceSave) || !(selectedTargetSave is SaveGame targetSave))
+                if (selectedSourceSave == null || selectedTargetSave == null)
                 {
                     throw new InvalidOperationException("The selected source or destination slot is not available.");
                 }
@@ -262,8 +288,8 @@ namespace EldenRingSaveCopy
                 CreateFileBackup(_fileManager.TargetPath, _fileManager.TargetFile);
 
                 byte[] updatedTargetFile = SaveFileService.CreateUpdatedSaveFile(
-                    sourceSave,
-                    targetSave,
+                    selectedSourceSave,
+                    selectedTargetSave,
                     _fileManager.TargetFile,
                     _fileManager.SourceID,
                     _fileManager.TargetID);
@@ -273,9 +299,20 @@ namespace EldenRingSaveCopy
 
                 _fileManager.TargetFile = updatedTargetFile;
 
-                var updatedTargetSave = sourceSave.CloneForSlot(targetSave.Index);
-                targetSaveGames[targetSave.Index] = updatedTargetSave;
-                toSaveSlot.SelectedIndex = targetSave.Index;
+                var updatedTargetSave = new SaveGame();
+                if (!updatedTargetSave.LoadData(updatedTargetFile, selectedTargetSave.Index))
+                {
+                    throw new InvalidOperationException("The updated destination slot could not be reloaded.");
+                }
+
+                int targetListIndex = GetTargetSaveListIndex(selectedTargetSave.Index);
+                if (targetListIndex < 0)
+                {
+                    throw new InvalidOperationException("The destination slot could not be found in the current list.");
+                }
+
+                targetSaveGames[targetListIndex] = updatedTargetSave;
+                toSaveSlot.SelectedItem = updatedTargetSave;
 
                 copyButton.Enabled = false;
                 copyButton.Text = "Copy Successful!";
@@ -290,7 +327,7 @@ namespace EldenRingSaveCopy
 
                 try
                 {
-                    string errorPath = _fileManager.TargetPath.Replace("ER0000.sl2", "Error.log");
+                    string errorPath = GetErrorLogPath(_fileManager.TargetPath);
                     File.WriteAllBytes(errorPath, Encoding.Default.GetBytes(ex.ToString()));
                 }
                 catch
@@ -300,6 +337,30 @@ namespace EldenRingSaveCopy
 
                 showAdditionalInfoMessage(MESSAGE_ERROR, $"Copy failed: {ex.Message}");
             }
+        }
+
+        private string GetErrorLogPath(string savePath)
+        {
+            string directory = System.IO.Path.GetDirectoryName(savePath);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                directory = AppDomain.CurrentDomain.BaseDirectory;
+            }
+
+            return System.IO.Path.Combine(directory, "Error.log");
+        }
+
+        private int GetTargetSaveListIndex(int slotIndex)
+        {
+            for (int i = 0; i < targetSaveGames.Count; i++)
+            {
+                if (targetSaveGames[i].Index == slotIndex)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private void DeleteLegacyBackupFile(string path)
