@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -43,6 +44,9 @@
     <Compile Include="FileManager.cs" />
     <Compile Include="SaveFileService.cs" />
     <Compile Include="Theme.cs" />
+    <Compile Include="FluentIcons.cs" />
+    <Compile Include="FluentControls.cs" />
+    <Compile Include="FluentComboBox.cs" />
     <Compile Include="RoundedPanel.cs" />
     <Compile Include="RoundedButton.cs" />
     <Compile Include="StepBadge.cs" />
@@ -59,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="app.manifest" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

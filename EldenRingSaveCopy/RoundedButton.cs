@@ -19,7 +19,7 @@ namespace EldenRingSaveCopy
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            BackColor = Color.Transparent;
+            BackColor = Theme.Surface; // matches the card the buttons sit on (override if placed elsewhere)
             Cursor = Cursors.Hand;
             UseVisualStyleBackColor = false;
         }
@@ -32,7 +32,11 @@ namespace EldenRingSaveCopy
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            // Fill behind the rounded shape with the parent's colour so the antialiased
+            // corners blend cleanly instead of leaving dark rectangular artifacts.
+            g.Clear(BackColor);
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
 
             Color top, bottom, border, fg;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using EldenRingSaveCopy.Saves.Model;
@@ -37,19 +36,12 @@ namespace EldenRingSaveCopy
         {
             string path = PickSaveFile();
             if (path == null) return;
-            try
-            {
-                _sourceSlots = ReadCharacterSlots(path);
-            }
-            catch (Exception ex)
-            {
-                SetBanner("Could not read the source file: " + ex.Message, Theme.RedBg, Theme.RedBorder, Theme.Red);
-                return;
-            }
-            txtSource.Text = path;
-            txtSource.ForeColor = Theme.Text;
+            try { _sourceSlots = ReadCharacterSlots(path); }
+            catch (Exception ex) { SetBanner("Could not read the source file: " + ex.Message, Banner.Kind.Critical); return; }
+            srcField.Value = path;
             FillCombo(cmbFrom, _sourceSlots, sourceOnly: true);
             _fromSlot = -1;
+            fromSummary.Visible = false;
             UpdateState();
         }
 
@@ -57,19 +49,12 @@ namespace EldenRingSaveCopy
         {
             string path = PickSaveFile();
             if (path == null) return;
-            try
-            {
-                _destSlots = ReadCharacterSlots(path);
-            }
-            catch (Exception ex)
-            {
-                SetBanner("Could not read the destination file: " + ex.Message, Theme.RedBg, Theme.RedBorder, Theme.Red);
-                return;
-            }
-            txtDest.Text = path;
-            txtDest.ForeColor = Theme.Text;
+            try { _destSlots = ReadCharacterSlots(path); }
+            catch (Exception ex) { SetBanner("Could not read the destination file: " + ex.Message, Banner.Kind.Critical); return; }
+            dstField.Value = path;
             FillCombo(cmbTo, _destSlots, sourceOnly: false);
             _toSlot = -1;
+            toSummary.Visible = false;
             UpdateState();
         }
 
@@ -89,7 +74,7 @@ namespace EldenRingSaveCopy
         // ===================================================================
         //  STEP 2 — slot combos
         // ===================================================================
-        private void FillCombo(ComboBox cmb, List<CharacterSlot> slots, bool sourceOnly)
+        private void FillCombo(FluentComboBox cmb, List<CharacterSlot> slots, bool sourceOnly)
         {
             cmb.BeginUpdate();
             cmb.Items.Clear();
@@ -106,7 +91,9 @@ namespace EldenRingSaveCopy
             }
             cmb.SelectedIndex = -1;
             cmb.Enabled = cmb.Items.Count > 0;
+            cmb.PlaceholderText = cmb.Items.Count > 0 ? "Choose a slot…" : "Select a file first";
             cmb.EndUpdate();
+            cmb.Invalidate();
         }
 
         private void Slot_Changed(object sender, EventArgs e)
@@ -125,44 +112,35 @@ namespace EldenRingSaveCopy
 
         private void RefreshSummaries()
         {
-            // FROM summary
+            // FROM summary (source character)
             if (_fromSlot >= 0 && _fromSlot < _sourceSlots.Count && !_sourceSlots[_fromSlot].IsEmpty)
             {
                 var s = _sourceSlots[_fromSlot];
-                SetSummary(lblFromSummary, $"   {s.Name}\n   {SlotMeta(s)}", Theme.Surface2, Theme.Text2);
+                fromSummary.SetContent(SlotSummary.Variant.Neutral, Initial(s.Name), s.Name, SlotMeta(s), "");
             }
-            else lblFromSummary.Visible = false;
+            else fromSummary.Visible = false;
 
             // TO summary (overwrite / conflict / safe)
             if (_toSlot >= 0 && _toSlot < _destSlots.Count)
             {
                 var s = _destSlots[_toSlot];
-                bool sameFile = string.Equals(txtSource.Text, txtDest.Text, StringComparison.OrdinalIgnoreCase);
+                bool sameFile = string.Equals(srcField.Value, dstField.Value, StringComparison.OrdinalIgnoreCase);
                 if (s.IsEmpty)
-                    SetSummary(lblToSummary, "   Empty slot — safe to copy into", Theme.GreenBg, Theme.Green);
+                    toSummary.SetContent(SlotSummary.Variant.Safe, "+", "Empty slot", "Safe to copy into", "Safe");
                 else if (sameFile && _toSlot == _fromSlot)
-                    SetSummary(lblToSummary, $"   {s.Name} — same as source slot (conflict)", Theme.AmberBg, Theme.Amber);
+                    toSummary.SetContent(SlotSummary.Variant.Warn, Initial(s.Name), s.Name, "Same as source slot", "Conflict");
                 else
-                    SetSummary(lblToSummary, $"   {s.Name} — will be overwritten (backup kept)", Theme.AmberBg, Theme.Amber);
+                    toSummary.SetContent(SlotSummary.Variant.Warn, Initial(s.Name), s.Name, "Will be overwritten — backup kept", "Overwrite");
             }
-            else lblToSummary.Visible = false;
-        }
-
-        private void SetSummary(Label lbl, string text, Color back, Color fore)
-        {
-            lbl.Text = text;
-            lbl.BackColor = back;
-            lbl.ForeColor = fore;
-            lbl.Visible = true;
+            else toSummary.Visible = false;
         }
 
         // ===================================================================
         //  Enable / disable + banner + step badges
         // ===================================================================
-        private bool FilesReady => txtSource.Text != "No file selected" && txtSource.Text.Length > 0
-                                && txtDest.Text != "No file selected" && txtDest.Text.Length > 0;
+        private bool FilesReady => srcField.HasValue && dstField.HasValue;
         private bool SlotsReady => _fromSlot >= 0 && _toSlot >= 0;
-        private bool SameSlot => string.Equals(txtSource.Text, txtDest.Text, StringComparison.OrdinalIgnoreCase)
+        private bool SameSlot => string.Equals(srcField.Value, dstField.Value, StringComparison.OrdinalIgnoreCase)
                                 && _fromSlot >= 0 && _fromSlot == _toSlot;
         private bool Ready => FilesReady && SlotsReady && !SameSlot;
 
@@ -176,26 +154,18 @@ namespace EldenRingSaveCopy
             btnCopy.Enabled = Ready;
 
             if (SameSlot)
-                SetBanner("Source and destination are the same slot. Choose a different destination slot to continue.",
-                    Theme.RedBg, Theme.RedBorder, Theme.Red);
+                SetBanner("Source and destination are the same slot. Choose a different destination slot to continue.", Banner.Kind.Critical);
             else if (!FilesReady)
-                SetBanner("Select your source and destination save files to begin.",
-                    Theme.InfoBg, Theme.InfoBorder, Theme.Text);
+                SetBanner("Select your source and destination save files to begin.", Banner.Kind.Info);
             else if (!SlotsReady)
-                SetBanner("Choose a character slot to copy from and a slot to copy to.",
-                    Theme.InfoBg, Theme.InfoBorder, Theme.Text);
+                SetBanner("Choose a character slot to copy from and a slot to copy to.", Banner.Kind.Info);
             else
-                SetBanner($"Ready to copy {_sourceSlots[_fromSlot].Name} into Slot {_toSlot + 1}. Review and press Copy.",
-                    Theme.InfoBg, Theme.InfoBorder, Theme.Text);
+                SetBanner($"Ready to copy {_sourceSlots[_fromSlot].Name} into Slot {_toSlot + 1}. Review and press Copy.", Banner.Kind.Info);
         }
 
-        private void SetBanner(string text, Color back, Color border, Color fore)
+        private void SetBanner(string text, Banner.Kind kind)
         {
-            lblBanner.Text = text;
-            lblBanner.ForeColor = fore;
-            bannerPanel.FillColor = back;
-            bannerPanel.BorderColor = border;
-            bannerPanel.Invalidate();
+            banner.Set(kind, text);
         }
 
         // ===================================================================
@@ -208,12 +178,12 @@ namespace EldenRingSaveCopy
 
             SetControlsEnabled(false);
             btnCopy.Text = "Copying…";
-            progress.Value = 0;
-            progress.Visible = true;
-            SetBanner("Copying character… please keep the app open.", Theme.Surface, Theme.BorderStrong, Theme.Text2);
+            banner.Progress.Value = 0;
+            banner.Progress.Visible = true;
+            SetBanner("Copying character… please keep the app open.", Banner.Kind.Neutral);
 
-            string sourcePath = txtSource.Text;
-            string destPath = txtDest.Text;
+            string sourcePath = srcField.Value;
+            string destPath = dstField.Value;
             int fromSlot = _fromSlot, toSlot = _toSlot;
 
             var worker = new BackgroundWorker { WorkerReportsProgress = true };
@@ -229,15 +199,15 @@ namespace EldenRingSaveCopy
 
                 ev.Result = backup;
             };
-            worker.ProgressChanged += (s, ev) => progress.Value = ev.ProgressPercentage;
+            worker.ProgressChanged += (s, ev) => banner.Progress.Value = ev.ProgressPercentage;
             worker.RunWorkerCompleted += (s, ev) =>
             {
-                progress.Visible = false;
+                banner.Progress.Visible = false;
                 SetControlsEnabled(true);
                 if (ev.Error != null)
                 {
                     btnCopy.Text = "Copy character";
-                    SetBanner("Copy failed: " + ev.Error.Message, Theme.RedBg, Theme.RedBorder, Theme.Red);
+                    SetBanner("Copy failed: " + ev.Error.Message, Banner.Kind.Critical);
                 }
                 else
                 {
@@ -247,14 +217,13 @@ namespace EldenRingSaveCopy
                         _destSlots = ReadCharacterSlots(destPath);
                         FillCombo(cmbTo, _destSlots, sourceOnly: false);
                         _toSlot = -1;
-                        lblToSummary.Visible = false;
+                        toSummary.Visible = false;
                     }
                     catch { /* the copy already succeeded; a refresh failure is non-fatal. */ }
 
                     string backupName = Path.GetFileName((string)ev.Result);
                     btnCopy.Text = "Done — Copy again";
-                    SetBanner($"Copy complete. Backup saved as {backupName}. Delete any ER0000.bak file before launching the game.",
-                        Theme.GreenBg, Theme.GreenBorder, Theme.Green);
+                    SetBanner($"Copy complete. Backup saved as {backupName}. Delete any ER0000.bak file before launching the game.", Banner.Kind.Success);
                     badge3.State = StepBadge.BadgeState.Done;
                 }
             };
@@ -283,6 +252,9 @@ namespace EldenRingSaveCopy
         }
 
         // ---- display helpers (the parser exposes name/level/playtime; class is not decoded) ----
+        private static string Initial(string name) =>
+            string.IsNullOrWhiteSpace(name) ? "?" : name.Substring(0, 1).ToUpperInvariant();
+
         private static string SlotLabel(int slotIndex, CharacterSlot s)
         {
             string cls = string.IsNullOrEmpty(s.ClassName) ? "" : $" — {s.ClassName}";
