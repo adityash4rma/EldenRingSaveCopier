@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore solution
+        run: nuget restore EldenRingSaveCopy.sln
+
+      - name: Build solution (Release)
+        run: msbuild EldenRingSaveCopy.sln /p:Configuration=Release /p:Platform="Any CPU" /m
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EldenRingSaveCopy-Release
+          path: EldenRingSaveCopy/bin/Release/
+          if-no-files-found: error
